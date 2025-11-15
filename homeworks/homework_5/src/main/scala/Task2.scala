@@ -11,23 +11,51 @@ import cats.implicits._
 object Task2 extends App {
   case class RadiusVector(x: Int, y: Int)
   object RadiusVector {
-    implicit val monoid: Monoid[RadiusVector] = ???
-  }
-  case class DegreeAngle(angel: Double)
-  object DegreeAngle {
-    implicit val monoid: Monoid[DegreeAngle] = ???
+    implicit val monoid: Monoid[RadiusVector] = new Monoid[RadiusVector] {
+      def empty: RadiusVector = RadiusVector(0, 0)
+      def combine(a: RadiusVector, b: RadiusVector): RadiusVector =
+        RadiusVector(a.x + b.x, a.y + b.y)
+    }
   }
 
-  case class SquareMatrix[A : Monoid](values: ((A, A, A), (A, A, A), (A, A, A)))
+  case class DegreeAngle(angel: Double)
+  object DegreeAngle {
+    implicit val monoid: Monoid[DegreeAngle] = new Monoid[DegreeAngle] {
+      def empty: DegreeAngle = DegreeAngle(0)
+      def combine(a: DegreeAngle, b: DegreeAngle): DegreeAngle = {
+        val sum = a.angel + b.angel
+        DegreeAngle(sum % 360)
+      }
+    }
+  }
+
+  case class SquareMatrix[A: Monoid](values: ((A, A, A), (A, A, A), (A, A, A)))
   object SquareMatrix {
-    implicit def monoid[A: Monoid]: Monoid[SquareMatrix[A]] = ???
+    implicit def monoid[A: Monoid]: Monoid[SquareMatrix[A]] = new Monoid[SquareMatrix[A]] {
+      def empty: SquareMatrix[A] = {
+        val zero = Monoid[A].empty
+        SquareMatrix(((zero, zero, zero), (zero, zero, zero), (zero, zero, zero)))
+      }
+
+      def combine(a: SquareMatrix[A], b: SquareMatrix[A]): SquareMatrix[A] = {
+        val monoidA = Monoid[A]
+        val ((a11, a12, a13), (a21, a22, a23), (a31, a32, a33)) = a.values
+        val ((b11, b12, b13), (b21, b22, b23), (b31, b32, b33)) = b.values
+
+        SquareMatrix((
+          (monoidA.combine(a11, b11), monoidA.combine(a12, b12), monoidA.combine(a13, b13)),
+          (monoidA.combine(a21, b21), monoidA.combine(a22, b22), monoidA.combine(a23, b23)),
+          (monoidA.combine(a31, b31), monoidA.combine(a32, b32), monoidA.combine(a33, b33))
+        ))
+      }
+    }
   }
 
   val radiusVectors = Vector(RadiusVector(0, 0), RadiusVector(0, 1), RadiusVector(-1, 1))
-  Monoid[RadiusVector].combineAll(radiusVectors) // RadiusVector(-1, 2)
+  println(Monoid[RadiusVector].combineAll(radiusVectors))
 
   val gradeAngles = Vector(DegreeAngle(380), DegreeAngle(60), DegreeAngle(30))
-  Monoid[DegreeAngle].combineAll(gradeAngles) // GradeAngle(90)
+  println(Monoid[DegreeAngle].combineAll(gradeAngles))
 
   val matrixes = Vector(
     SquareMatrix(
@@ -45,8 +73,6 @@ object Task2 extends App {
       )
     )
   )
-  Monoid[SquareMatrix[Int]].combineAll(matrixes)
-  //  [0, 0, 0]
-  //  |1, 1, 1|
-  //  [0, 0, 0]
+  println(Monoid[SquareMatrix[Int]].combineAll(matrixes))
+  // SquareMatrix(((0,0,0),(1,1,1),(0,0,0)))
 }
